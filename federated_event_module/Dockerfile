@@ -30,10 +30,6 @@ RUN apt-get update \
 # Set the working directory in the container
 WORKDIR /app
 
-# Copy the shell script and Python script from the "files" folder into the container
-COPY files/entrypoint.sh /app
-COPY files/FederatedCTI.py /app
-
 
 # Set the entrypoint to the shell script
-ENTRYPOINT ["/app/entrypoint.sh"]
+ENTRYPOINT ["/app/files/entrypoint.sh"]

@@ -114,7 +114,7 @@ services:
       - "MYSQL_USER=${MYSQL_USER:-misp}"
       - "MYSQL_PASSWORD=${MYSQL_PASSWORD:-example}"
       - "MYSQL_DATABASE=${MYSQL_DATABASE:-misp}"
-  
+
   misp-modules:
     image: ghcr.io/misp/misp-docker/misp-modules:latest
     build:
@@ -127,6 +127,15 @@ services:
       - "REDIS_BACKEND=redis"
     depends_on:
       - redis
+
+  federated-cti:
+    build:
+      context: federated_event_module/.
+      dockerfile: Dockerfile
+    volumes:
+      - ./files:/app/files
+    command: []
+    entrypoint: /app/files/entrypoint.sh
 
 volumes:
     mysql_data:

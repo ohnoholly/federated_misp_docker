@@ -1,7 +1,6 @@
 #!/bin/bash
 
-# Load variables from environment.sh file
-source /app/environment.sh
+source /app/files/environment.sh
 
-# Run the Python script
-python3 /app/FederatedCTI.py
+# Run the main Python script
+python /app/files/FederatedCTI.py
