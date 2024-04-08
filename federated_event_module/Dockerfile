@@ -1,6 +1,8 @@
 FROM ubuntu:latest
 ARG DEBIAN_FRONTEND=noninteractive
 
+# Any working directory can be chosen as per choice like '/' or '/home' etc
+WORKDIR /home
 
 RUN apt update -y && apt upgrade -y
 
@@ -9,14 +11,13 @@ RUN apt-get -y install libpq-dev libxml2-dev libxslt1-dev libldap2-dev libsasl2-
 
 # Install dependencies (install this here instead of in the requirements.txt file to avoid having to install them every time the image is built)
 RUN python3 -m pip install \
-    cbor2 \
     numpy \
     pandas \
     pause \
     pika \
     scikit_learn \
-    stix2 \
     torch \
+    coloredlogs\
     pytorch-lightning
 
 ## install sudo and gosu
@@ -27,9 +28,9 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 
-# Set the working directory in the container
-WORKDIR /app
+ADD files /home/file
 
+RUN chmod 777 /home/file/entrypoint.sh
 
 # Set the entrypoint to the shell script
-ENTRYPOINT ["/app/files/entrypoint.sh"]
+ENTRYPOINT ["/home/file/entrypoint.sh"]

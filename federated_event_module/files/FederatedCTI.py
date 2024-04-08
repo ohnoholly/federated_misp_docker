@@ -53,13 +53,6 @@ class ClientHandler:
         print(device)
 
 
-        if dataset =='CIRCL':
-            DATA_FILE = "CIRCL_DS_0.npz"
-        elif dataset == 'BOTVRIJ':
-            DATA_FILE = "BOTVRIJ_DS_0.npz"
-        elif dataset == 'MIX':
-            DATA_FILE = "MISP_DS_0.npz"
-
         cur_epoch = 0
 
         while True:
@@ -74,7 +67,7 @@ class ClientHandler:
                 logging.info("Connected to server to send model.")
 
                 # start training
-                FILE_PATH = DATA_FILE
+                FILE_PATH = DATASET
                 npzfile = np.load(FILE_PATH, allow_pickle = True)
                 x_train = npzfile["train_x"]
                 y_train = npzfile["train_y"]
@@ -197,10 +190,6 @@ class ClientHandler:
         self.client_program.start()
 
 if __name__=='__main__':
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument('train_dataset', type=str)
-    args = parser.parse_args()
 
     """ Define initial model """
     model = Models.Multi_Classifier_Reg(66, 168, 85, 45, 10)

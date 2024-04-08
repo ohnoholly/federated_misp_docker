@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source /app/files/environment.sh
+source /home/file/environment.sh
 
 # Run the main Python script
-python /app/files/FederatedCTI.py
+python3 /home/file/FederatedCTI.py
