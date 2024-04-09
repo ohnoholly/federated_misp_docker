@@ -132,10 +132,6 @@ services:
     build:
       context: federated_event_module/.
       dockerfile: Dockerfile
-    volumes:
-      - .:/home/file  # Mount the entire "files" folder
-    command: []
-    entrypoint: /home/file/entrypoint.sh
 
 volumes:
     mysql_data:
