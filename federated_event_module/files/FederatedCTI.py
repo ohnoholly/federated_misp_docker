@@ -12,7 +12,6 @@ import MLUnit
 import Utils
 import Models
 from torch import optim, nn
-from config_reader import Configs
 import torch
 from sklearn.model_selection import train_test_split
 
@@ -20,14 +19,15 @@ coloredlogs.install(fmt='%(asctime)s,%(msecs)03d %(name)s[%(process)d] %(levelna
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
-SIZE = 1024
 FORMAT = "utf-8"
+SIZE = 1024
 # Environment Variables
 HOST = os.environ.get('CENTRAL_HOST')
 PORT = int(os.environ.get('CENTRAL_PORT'))
 EPOCHS = int(os.environ.get('LOCAL_LIMIT_EPOCHS'))
 BATCH_SIZE_ITER = int(os.environ.get('BATCH_SIZE'))
 DATASET = os.environ.get('DATASET')
+ORG_ID = os.environ.get('ORG_ID')
 
 
 class NumpyArrayEncoder(JSONEncoder):
@@ -39,18 +39,15 @@ class NumpyArrayEncoder(JSONEncoder):
 class ClientHandler:
     def client_program(self, host, port, dataset, epochs, batch_size, model, opt, loss):
 
-        # Create a configurations reader instance
 
-        self.configs_dir = os.environ.get("CONFIG_DIR", "")
-        self.conf_reader = Configs(self.configs_dir)
-
-        logging.info("Federated Client waiting for the device ID.")
+        logging.info("Federated Client waiting for the organization ID.")
         # Block until the device id is found. Check every 30 seconds, indefinitely.
-        CLIENT = self.conf_reader.waitForDeviceId(n_tries=1, time_interval=3)
-        logging.info(f"Federated Client got the following device ID: {CLIENT}.")
+        CLIENT = ORG_ID
+        logging.info(f"Federated Client got the following organization ID: {CLIENT}.")
 
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        print(device)
+        logging.info(f"The training is running on: {device}.")
+
 
 
         cur_epoch = 0
