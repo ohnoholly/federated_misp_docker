@@ -16,7 +16,7 @@ RUN python3 -m pip install \
     openpyxl\
     pause \
     pika \
-    scikit_learn \
+    scikit_learn==1.0.2 \
     torch \
     coloredlogs\
     nltk\
