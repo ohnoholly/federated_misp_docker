@@ -21,6 +21,7 @@ RUN python3 -m pip install \
     pickle\
     nltk\
     urllib3\
+    pymisp\
     pytorch-lightning
 
 ## install sudo and gosu
