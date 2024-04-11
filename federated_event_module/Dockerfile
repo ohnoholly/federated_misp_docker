@@ -13,6 +13,7 @@ RUN apt-get -y install libpq-dev libxml2-dev libxslt1-dev libldap2-dev libsasl2-
 RUN python3 -m pip install \
     numpy \
     pandas \
+    openpyxl\
     pause \
     pika \
     scikit_learn \
