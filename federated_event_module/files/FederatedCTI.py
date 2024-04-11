@@ -229,17 +229,17 @@ class ClientHandler:
 
             logging.info("Loading the current federated event classification model...")
             # Load the pre-trained event classification model
-            event_model = model = Models.Multi_Classifier_Reg(66, 168, 85, 45, 10)
+            event_model = Models.Multi_Classifier_Reg(66, 168, 85, 45, 10)
 
-            class_model = event_model.load_state_dict(torch.load(os.getcwd()+"/file/Event_classifier_model.pt"))
+            event_model.load_state_dict(torch.load(os.getcwd()+"/file/Event_classifier_model.pt"))
 
             # disable randomness, dropout, etc...
-            class_model.eval()
+            event_model.eval()
 
             logging.info("Infering the classification model with data samples...")
             tensor_data = torch.FloatTensor(data.values)
             # predict with the model
-            y_hat = class_model(tensor_data)
+            y_hat = event_model(tensor_data)
             _, event_pred = torch.max(y_hat, 1)
             event_pred = event_pred.tolist()
 
