@@ -18,6 +18,7 @@ from datasample_generator import sample_generator
 from pymisp import ExpandedPyMISP, PyMISP, MISPEvent, MISPAttribute
 import pickle
 import urllib3
+import pause
 
 
 
@@ -28,8 +29,11 @@ HOST = os.environ.get('CENTRAL_HOST')
 PORT = int(os.environ.get('CENTRAL_PORT'))
 EPOCHS = int(os.environ.get('LOCAL_LIMIT_EPOCHS'))
 BATCH_SIZE_ITER = int(os.environ.get('BATCH_SIZE'))
-DATASET = os.environ.get('DATASET')
+DATASET_TRAIN = os.environ.get('DATASET_TRAIN')
+DATASET_INFERENCE = os.environ.get('DATASET_INFERENCE')
 ORG_ID = os.environ.get('ORG_ID')
+MISP_URL = os.environ.get('MISP_URL')
+MISP_AUTH_KEY = os.environ.get('MISP_AUTH_KEY')
 
 
 class NumpyArrayEncoder(JSONEncoder):
@@ -161,13 +165,29 @@ class ClientHandler:
                 MLUnit.test(model, self.global_weights, x_test, y_test)
 
                 logging.info("Current Epoch " + str(cur_epoch)+ " ends.")
-                if cur_epoch == epochs-2:
-                    client_socket.close()
-                    logging.info("Reaching the final training epoch. Saving the model...")
+                if cur_epoch % 50 == 0:
+                    logging.info(" Saving the current model for backup...")
                     # Specify a path
-                    PATH = "Event_classifier_model.pt"
+                    PATH = os.getcwd()+"Event_classifier_model.pt"
                     # Save
                     torch.save(model.state_dict(), PATH)
+
+                if cur_epoch == epochs:
+
+                    client_socket.close()
+                    logging.info("Reaching the final training epoch. Closing the socket and saving the model...")
+                    # Specify a path
+                    PATH = os.getcwd()+"Event_classifier_model.pt"
+                    # Save
+                    torch.save(model.state_dict(), PATH)
+                    self.inference_flag = True
+                    days = 1
+                    logging.info("Total Training Epochs Done. Next update will be in " + str(days) + " days.")
+                    week_from_now = datetime.now() + timedelta(days=days)
+                    pause.until(datetime(week_from_now.year, week_from_now.month, week_from_now.day, week_from_now.hour))
+                    logging.info(str(days) + " days have elapsed. Time for new model update.")
+                    # Reset the current epoch
+                    cur_epoch = -1
 
                 cur_epoch += 1
 
@@ -177,11 +197,11 @@ class ClientHandler:
                 time.sleep(30)
                 pass
 
-    def client_inference_program(self, dataset, ):
+    def client_inference_program(self, dataset):
 
 
         logging.info("Lodding the test IoCs...")
-        input_data_path = os.getcwd() + "/Dataset/input_"+args.dataset+".xlsx"
+        input_data_path = os.getcwd() + "/Dataset/input_"+ dataset +".xlsx"
         # Generate data samples from IoC files
         logging.info("Starting generating data samples from the IoCs")
         generated_samples, original_samples = sample_generator(input_data_path)
@@ -189,134 +209,144 @@ class ClientHandler:
 
         data= generated_samples.values
         data = data[:, 0:66]
-        data = normalize(data)
+        data = Utils.normalize(data)
         num_class = 10
         num_feature = 66
 
         event_classes = ['APT', 'Attack', 'Backdoor', 'Botnet', 'Command and Control',
             'Exploitation', 'Malspam/Phishing', 'Malware', 'Ransomware', 'Trojan']
 
-        logging.info("Loading the pre-trained event classification model...")
-        # Load the pre-trained event classification model
-        event_model = Models.DNN(
-        input_dim=num_feature,
-        output_dim=num_class,
-        nn_depth=3,
-        nn_width=256,
-        dropout=0.2,
-        momentum=0.1
-        )
+        logging.info("Test data samples are ready for the inference. Waiting for federated model...")
+        time.sleep(30)
 
-        class_model = event_model.load_from_checkpoint("Models/"+args.dataset+"/DNN_model.ckpt",
-                            input_dim=num_feature,
-                            output_dim=num_class,
-                            nn_depth=3,
-                            nn_width=256,
-                            dropout=0.2,
-                            momentum=0.1)
+        while self.inference_flag == True:
 
-        # disable randomness, dropout, etc...
-        class_model.eval()
+            logging.info("Start the inference phase with current model...")
 
-        logging.info("Infering the classification model with data samples...")
-        tensor_data = torch.FloatTensor(data.values)
-        # predict with the model
-        y_hat = class_model(tensor_data)
-        _, event_pred = torch.max(y_hat, 1)
-        event_pred = event_pred.tolist()
+            logging.info("Loading the current federated event classification model...")
+            # Load the pre-trained event classification model
+            event_model = model = Models.Multi_Classifier_Reg(66, 168, 85, 45, 10)
 
-        logging.info("Loading the pre-trained threat level ranking model...")
-        # Load the pre-trained L2R model
-        l2r_model = torch.jit.load('Models/'+ args.dataset+'/l2rmodel.pt')
-        l2r_model.eval()
+            class_model = event_model.load_state_dict(torch.load("Event_classifier_model.pt"))
 
-        logging.info("Infering the threat level ranking model with data samples...")
-        y_hat = l2r_model(tensor_data)
-        level_pred = y_hat.detach().numpy()
-        pred_max = np.max(level_pred)
-        pred_min = np.min(level_pred)
-        pred_range = pred_max - pred_min
-        level_pred[(level_pred > (pred_max-(pred_range/4))) & (level_pred <= pred_max)] = 4
-        level_pred[(level_pred > (pred_max-2*(pred_range/4))) & (level_pred < (pred_max-(pred_range/4))) ] = 3
-        level_pred[(level_pred > (pred_max-3*(pred_range/4))) & (level_pred < (pred_max-2*(pred_range/4))) ] = 2
-        level_pred[(level_pred >= pred_min) & (level_pred < (pred_max-3*(pred_range/4))) ] = 1
-        level_pred = level_pred.squeeze()
-        level_pred = level_pred.tolist()
+            # disable randomness, dropout, etc...
+            class_model.eval()
 
-        logging.info("Loading the pre-trained clustering model...")
-        # Load the pre-trained clustering model
-        with open('Models/'+ args.dataset+'/'+args.clustering_algo+'.pkl', 'rb') as f:
-            cluster_model = pickle.load(f)
+            logging.info("Infering the classification model with data samples...")
+            tensor_data = torch.FloatTensor(data.values)
+            # predict with the model
+            y_hat = class_model(tensor_data)
+            _, event_pred = torch.max(y_hat, 1)
+            event_pred = event_pred.tolist()
 
-        logging.info("Infering the clustering model with data samples...")
-        cluster_predicts = cluster_model.fit_predict(data)
+            logging.info("Loading the pre-trained threat level ranking model...")
+            # Load the pre-trained L2R model
+            l2r_model = torch.jit.load(os.getcwd()+'/Models/'+ dataset +'/l2rmodel.pt')
+            l2r_model.eval()
+
+            logging.info("Infering the threat level ranking model with data samples...")
+            y_hat = l2r_model(tensor_data)
+            level_pred = y_hat.detach().numpy()
+            pred_max = np.max(level_pred)
+            pred_min = np.min(level_pred)
+            pred_range = pred_max - pred_min
+            level_pred[(level_pred > (pred_max-(pred_range/4))) & (level_pred <= pred_max)] = 4
+            level_pred[(level_pred > (pred_max-2*(pred_range/4))) & (level_pred < (pred_max-(pred_range/4))) ] = 3
+            level_pred[(level_pred > (pred_max-3*(pred_range/4))) & (level_pred < (pred_max-2*(pred_range/4))) ] = 2
+            level_pred[(level_pred >= pred_min) & (level_pred < (pred_max-3*(pred_range/4))) ] = 1
+            level_pred = level_pred.squeeze()
+            level_pred = level_pred.tolist()
+
+            logging.info("Loading the pre-trained clustering model...")
+
+            # Load the pre-trained clustering model
+            with open(os.getcwd()+'/Models/'+ dataset +'/'+ clustering_algo +'.pkl', 'rb') as f:
+                cluster_model = pickle.load(f)
+
+            logging.info("Infering the clustering model with data samples...")
+            cluster_predicts = cluster_model.fit_predict(data)
 
 
-
-        logging.info("Connecting to MISP...")
-        urllib3.disable_warnings()
-        misp = ExpandedPyMISP(misp_url, misp_key, misp_verifycert)
-
-
-        for i in range(5):
-            r = misp.search(eventinfo=generated_samples.iloc[i].loc[68], metadata=True)
-            cluster_id_str = "Cluster_ID:"+str(cluster_predicts[i])
-            event_class = event_pred[i]
-            event_class_str = "Event_class:"+str(event_classes[event_class])
-            threat_level = int(level_pred[i])
-            if len(r) == 0:
-                event_obj = MISPEvent()
-                event_obj.distribution = 1
-                event_obj.threat_level_id = threat_level
-                event_obj.analysis = 1
-                event_obj.info = generated_samples.iloc[i].loc[68]
-                event = misp.add_event(event_obj)
-                event_id, event_uuid = event['Event']['id'], event['Event']['uuid']
-                logging.info("Adding a new event with id:" + str(event_id) + " and UUID:"+str(event_uuid))
-                misp_attribute = MISPAttribute()
-                misp_attribute.value = str(original_samples.iloc[i]['Atr_Value'])
-                misp_attribute.category = str(original_samples.iloc[i]['Category'])
-                misp_attribute.type = str(original_samples.iloc[i]['Atr_type'])
-                misp_attribute.comment = str(original_samples.iloc[i]['Comment'])
-                misp_attribute.to_ids = str(original_samples.iloc[i]['Is_IDS'])
-                r = misp.add_attribute(event_uuid, misp_attribute)
-                tag = misp.tag(event_uuid, cluster_id_str)
-                tag = misp.tag(event_uuid, event_class_str)
-                logging.info("Adding a cluster tag:" + cluster_id_str)
-                logging.info("Adding an event tag:" + event_class_str)
-
-
-            else:
-                for obj in r:
-                    misp_attribute = MISPAttribute()
-                    misp_attribute.value = str(original_samples.iloc[i]['Atr_Value'])
-                    misp_attribute.category = str(original_samples.iloc[i]['Category'])
-                    misp_attribute.type = str(original_samples.iloc[i]['Atr_type'])
-                    misp_attribute.comment = str(original_samples.iloc[i]['Comment'])
-                    misp_attribute.to_ids = str(original_samples.iloc[i]['Is_IDS'])
-                    r = misp.add_attribute(str(obj['Event']['uuid']), misp_attribute)
-                    tags = []
-                    for tag in obj['Event']['Tag']:
-                        tags.append(tag['name'])
-
-                    if cluster_id_str not in tags:
-                        tag = misp.tag(event_uuid, cluster_id_str)
-                        logging.info("Adding a new tag:" + cluster_id_str + " to the event:"+str(event_uuid))
-
-                    logging.info("Add a new attribute to the event:" + str(event_id))
+            try:
+                logging.info("Connecting to MISP...")
+                urllib3.disable_warnings()
+                misp = ExpandedPyMISP(MISP_URL, MISP_AUTH_KEY, False)
+                bookmark = 0
+                while bookmark <= generated_samples.shape[0]:
+                    for i in range(5):
+                        instance = bookmark + i
+                        r = misp.search(eventinfo=generated_samples.iloc[instance].loc[68], metadata=True)
+                        cluster_id_str = "Cluster_ID:"+str(cluster_predicts[instance])
+                        event_class = event_pred[instance]
+                        event_class_str = "Event_class:"+str(event_classes[event_class])
+                        threat_level = int(level_pred[instance])
+                        if len(r) == 0:
+                            event_obj = MISPEvent()
+                            event_obj.distribution = 1
+                            event_obj.threat_level_id = threat_level
+                            event_obj.analysis = 1
+                            event_obj.info = generated_samples.iloc[instance].loc[68]
+                            event = misp.add_event(event_obj)
+                            event_id, event_uuid = event['Event']['id'], event['Event']['uuid']
+                            logging.info("Adding a new event with id:" + str(event_id) + " and UUID:"+str(event_uuid))
+                            misp_attribute = MISPAttribute()
+                            misp_attribute.value = str(original_samples.iloc[instance]['Atr_Value'])
+                            misp_attribute.category = str(original_samples.iloc[instance]['Category'])
+                            misp_attribute.type = str(original_samples.iloc[instance]['Atr_type'])
+                            misp_attribute.comment = str(original_samples.iloc[instance]['Comment'])
+                            misp_attribute.to_ids = str(original_samples.iloc[instance]['Is_IDS'])
+                            r = misp.add_attribute(event_uuid, misp_attribute)
+                            tag = misp.tag(event_uuid, cluster_id_str)
+                            tag = misp.tag(event_uuid, event_class_str)
+                            logging.info("Adding a cluster tag:" + cluster_id_str)
+                            logging.info("Adding an event tag:" + event_class_str)
+                            bookmark = instance
 
 
+                        else:
+                            for obj in r:
+                                misp_attribute = MISPAttribute()
+                                misp_attribute.value = str(original_samples.iloc[instance]['Atr_Value'])
+                                misp_attribute.category = str(original_samples.iloc[instance]['Category'])
+                                misp_attribute.type = str(original_samples.iloc[instance]['Atr_type'])
+                                misp_attribute.comment = str(original_samples.iloc[instance]['Comment'])
+                                misp_attribute.to_ids = str(original_samples.iloc[instance]['Is_IDS'])
+                                r = misp.add_attribute(str(obj['Event']['uuid']), misp_attribute)
+                                tags = []
+                                for tag in obj['Event']['Tag']:
+                                    tags.append(tag['name'])
 
-    def __init__(self, host, port, dataset, epochs, batch_size, model, opt, loss):
+                                if cluster_id_str not in tags:
+                                    tag = misp.tag(event_uuid, cluster_id_str)
+                                    logging.info("Adding a new tag:" + cluster_id_str + " to the event:"+str(event_uuid))
+
+                                logging.info("Add a new attribute to the event:" + str(event_id))
+                            bookmark = instance
+
+                        time.sleep(5)
+
+                except:
+                    logging.error(e)
+                    logging.error("Connecting to MISP failed, Reconnecting in 30 minutes.")
+                    time.sleep(30)
+                    pass
+
+
+
+
+    def __init__(self, host, port, dataset_train, dataset_inference, epochs, batch_size, model, opt, loss):
         """
         TODO: Description
         """
         self.global_weights = []
         self.external_xsyn = []
         self.external_ysyn = []
+        self.inference_flag = False
         # Initiate federated client thread
-        self.client_program = threading.Thread(target=self.client_fl_program, args=([host, port, dataset, epochs, batch_size, model, opt, loss]))
-        self.client_program.start()
+        self.client_fl_program = threading.Thread(target=self.client_fl_program, args=([host, port, dataset_train, epochs, batch_size, model, opt, loss]))
+        self.client_inference_program = threading.Thread(target=self.client_inference_program, args=([dataset_inference]))
+        self.client_fl_program.start()
+        self.client_inference_program.start()
 
 if __name__=='__main__':
 
@@ -329,4 +359,4 @@ if __name__=='__main__':
     opt = optim.SGD(model.parameters(), lr=0.01, weight_decay=1e-3)
     loss = nn.MSELoss()
 
-    client=ClientHandler(HOST, PORT, DATASET, EPOCHS, BATCH_SIZE_ITER , model, opt, loss)
+    client=ClientHandler(HOST, PORT, DATASET_TRAIN, DATASET_INFERENCE, EPOCHS, BATCH_SIZE_ITER , model, opt, loss)
