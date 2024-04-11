@@ -325,7 +325,7 @@ class ClientHandler:
 
                         time.sleep(5)
 
-                except:
+                except Exception as e:
                     logging.error(e)
                     logging.error("Connecting to MISP failed, Reconnecting in 30 minutes.")
                     time.sleep(30)

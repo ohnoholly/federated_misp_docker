@@ -18,7 +18,6 @@ RUN python3 -m pip install \
     scikit_learn \
     torch \
     coloredlogs\
-    pickle\
     nltk\
     urllib3\
     pymisp\
