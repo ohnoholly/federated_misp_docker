@@ -65,7 +65,6 @@ class ClientHandler:
 
                 # receive first message
                 data = client_socket.recv(SIZE).decode(FORMAT)
-                epochs = int(data)
 
                 logging.info("Connected to server to send model.")
 
@@ -129,7 +128,6 @@ class ClientHandler:
 
                 """ Global model transfer """
                 data = client_socket.recv(SIZE).decode(FORMAT)
-                epochs = int(data)
 
                 data = f"Model Update_{CLIENT}"
                 client_socket.send(data.encode(FORMAT))
