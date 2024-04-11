@@ -231,7 +231,7 @@ class ClientHandler:
             # Load the pre-trained event classification model
             event_model = model = Models.Multi_Classifier_Reg(66, 168, 85, 45, 10)
 
-            class_model = event_model.load_state_dict(torch.load("Event_classifier_model.pt"))
+            class_model = event_model.load_state_dict(torch.load(os.getcwd()+"/file/Event_classifier_model.pt"))
 
             # disable randomness, dropout, etc...
             class_model.eval()
