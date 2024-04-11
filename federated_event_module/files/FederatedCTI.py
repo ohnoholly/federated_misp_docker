@@ -35,6 +35,7 @@ DATASET_INFERENCE = os.environ.get('DATASET_INFERENCE')
 ORG_ID = os.environ.get('ORG_ID')
 MISP_URL = os.environ.get('MISP_URL')
 MISP_AUTH_KEY = os.environ.get('MISP_AUTH_KEY')
+CLUSTERING_ALGO = os.environ.get('CLUSTERING_ALGO')
 
 
 class NumpyArrayEncoder(JSONEncoder):
@@ -196,7 +197,7 @@ class ClientHandler:
                 time.sleep(30)
                 pass
 
-    def client_inference_program(self, dataset):
+    def client_inference_program(self, dataset, clustering_algo):
 
 
         logging.info("Lodding the test IoCs...")
@@ -338,7 +339,7 @@ class ClientHandler:
 
 
 
-    def __init__(self, host, port, dataset_train, dataset_inference, epochs, batch_size, model, opt, loss):
+    def __init__(self, host, port, dataset_train, dataset_inference, epochs, batch_size, model, opt, loss, clustering_algo):
         """
         TODO: Description
         """
@@ -348,7 +349,7 @@ class ClientHandler:
         self.inference_flag = False
         # Initiate federated client thread
         self.client_fl_program = threading.Thread(target=self.client_fl_program, args=([host, port, dataset_train, epochs, batch_size, model, opt, loss]))
-        self.client_inference_program = threading.Thread(target=self.client_inference_program, args=([dataset_inference]))
+        self.client_inference_program = threading.Thread(target=self.client_inference_program, args=([dataset_inference, clustering_algo]))
         self.client_fl_program.start()
         self.client_inference_program.start()
 
@@ -363,4 +364,4 @@ if __name__=='__main__':
     opt = optim.SGD(model.parameters(), lr=0.01, weight_decay=1e-3)
     loss = nn.MSELoss()
 
-    client=ClientHandler(HOST, PORT, DATASET_TRAIN, DATASET_INFERENCE, EPOCHS, BATCH_SIZE_ITER , model, opt, loss)
+    client=ClientHandler(HOST, PORT, DATASET_TRAIN, DATASET_INFERENCE, EPOCHS, BATCH_SIZE_ITER , model, opt, loss, CLUSTERING_ALGO)
