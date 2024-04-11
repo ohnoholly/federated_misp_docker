@@ -70,7 +70,7 @@ class ClientHandler:
                 logging.info("Connected to server to send model.")
 
                 # start training
-                FILE_PATH = DATASET
+                FILE_PATH = DATASET_TRAIN
                 npzfile = np.load(FILE_PATH, allow_pickle = True)
                 x_train = npzfile["train_x"]
                 y_train = npzfile["train_y"]
@@ -168,7 +168,7 @@ class ClientHandler:
                 if cur_epoch % 50 == 0:
                     logging.info(" Saving the current model for backup...")
                     # Specify a path
-                    PATH = os.getcwd()+"Event_classifier_model.pt"
+                    PATH = os.getcwd()+"/file/Event_classifier_model.pt"
                     # Save
                     torch.save(model.state_dict(), PATH)
 
@@ -177,7 +177,7 @@ class ClientHandler:
                     client_socket.close()
                     logging.info("Reaching the final training epoch. Closing the socket and saving the model...")
                     # Specify a path
-                    PATH = os.getcwd()+"Event_classifier_model.pt"
+                    PATH = os.getcwd()+"/file/Event_classifier_model.pt"
                     # Save
                     torch.save(model.state_dict(), PATH)
                     self.inference_flag = True
@@ -201,7 +201,7 @@ class ClientHandler:
 
 
         logging.info("Lodding the test IoCs...")
-        input_data_path = os.getcwd() + "/Dataset/input_"+ dataset +".xlsx"
+        input_data_path = os.getcwd() + "/file/Dataset/input_"+ dataset +".xlsx"
         # Generate data samples from IoC files
         logging.info("Starting generating data samples from the IoCs")
         generated_samples, original_samples = sample_generator(input_data_path)
@@ -241,7 +241,7 @@ class ClientHandler:
 
             logging.info("Loading the pre-trained threat level ranking model...")
             # Load the pre-trained L2R model
-            l2r_model = torch.jit.load(os.getcwd()+'/Models/'+ dataset +'/l2rmodel.pt')
+            l2r_model = torch.jit.load(os.getcwd()+'/file/Models/'+ dataset +'/l2rmodel.pt')
             l2r_model.eval()
 
             logging.info("Infering the threat level ranking model with data samples...")
@@ -260,7 +260,7 @@ class ClientHandler:
             logging.info("Loading the pre-trained clustering model...")
 
             # Load the pre-trained clustering model
-            with open(os.getcwd()+'/Models/'+ dataset +'/'+ clustering_algo +'.pkl', 'rb') as f:
+            with open(os.getcwd()+'/file/Models/'+ dataset +'/'+ clustering_algo +'.pkl', 'rb') as f:
                 cluster_model = pickle.load(f)
 
             logging.info("Infering the clustering model with data samples...")
