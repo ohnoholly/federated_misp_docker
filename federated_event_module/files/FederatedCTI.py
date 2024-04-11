@@ -16,6 +16,7 @@ import torch
 from sklearn.model_selection import train_test_split
 from datasample_generator import sample_generator
 from pymisp import ExpandedPyMISP, PyMISP, MISPEvent, MISPAttribute
+from datetime import datetime, timedelta
 import pickle
 import urllib3
 import pause
@@ -215,7 +216,12 @@ class ClientHandler:
             'Exploitation', 'Malspam/Phishing', 'Malware', 'Ransomware', 'Trojan']
 
         logging.info("Test data samples are ready for the inference. Waiting for federated model...")
-        time.sleep(30)
+
+        while True:
+            time.sleep(30)
+            logging.info("Wake up to check the status...")
+            if self.inference_flag == True:
+                break
 
         while self.inference_flag == True:
 
