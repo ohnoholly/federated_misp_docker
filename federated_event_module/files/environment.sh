@@ -14,3 +14,8 @@ export BATCH_SIZE=128
 export MESSAGE_SIZE=1024
 export DATASET='/home/file/MISP_DS_0.npz'
 export ORG_ID='IPN'
+
+
+# Inference parameters
+export MISP_URL=
+export MISP_AUTH_KEY=

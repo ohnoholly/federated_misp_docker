@@ -14,10 +14,12 @@ import Models
 from torch import optim, nn
 import torch
 from sklearn.model_selection import train_test_split
+from datasample_generator import sample_generator
+from pymisp import ExpandedPyMISP, PyMISP, MISPEvent, MISPAttribute
+import pickle
+import urllib3
 
-coloredlogs.install(fmt='%(asctime)s,%(msecs)03d %(name)s[%(process)d] %(levelname)s %(message)s')
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
+
 
 FORMAT = "utf-8"
 SIZE = 1024
@@ -37,7 +39,7 @@ class NumpyArrayEncoder(JSONEncoder):
         return JSONEncoder.default(self, obj)
 
 class ClientHandler:
-    def client_program(self, host, port, dataset, epochs, batch_size, model, opt, loss):
+    def client_fl_program(self, host, port, dataset, epochs, batch_size, model, opt, loss):
 
 
         logging.info("Federated Client waiting for the organization ID.")
@@ -175,6 +177,136 @@ class ClientHandler:
                 time.sleep(30)
                 pass
 
+    def client_inference_program(self, dataset, ):
+
+
+        logging.info("Lodding the test IoCs...")
+        input_data_path = os.getcwd() + "/Dataset/input_"+args.dataset+".xlsx"
+        # Generate data samples from IoC files
+        logging.info("Starting generating data samples from the IoCs")
+        generated_samples, original_samples = sample_generator(input_data_path)
+
+
+        data= generated_samples.values
+        data = data[:, 0:66]
+        data = normalize(data)
+        num_class = 10
+        num_feature = 66
+
+        event_classes = ['APT', 'Attack', 'Backdoor', 'Botnet', 'Command and Control',
+            'Exploitation', 'Malspam/Phishing', 'Malware', 'Ransomware', 'Trojan']
+
+        logging.info("Loading the pre-trained event classification model...")
+        # Load the pre-trained event classification model
+        event_model = Models.DNN(
+        input_dim=num_feature,
+        output_dim=num_class,
+        nn_depth=3,
+        nn_width=256,
+        dropout=0.2,
+        momentum=0.1
+        )
+
+        class_model = event_model.load_from_checkpoint("Models/"+args.dataset+"/DNN_model.ckpt",
+                            input_dim=num_feature,
+                            output_dim=num_class,
+                            nn_depth=3,
+                            nn_width=256,
+                            dropout=0.2,
+                            momentum=0.1)
+
+        # disable randomness, dropout, etc...
+        class_model.eval()
+
+        logging.info("Infering the classification model with data samples...")
+        tensor_data = torch.FloatTensor(data.values)
+        # predict with the model
+        y_hat = class_model(tensor_data)
+        _, event_pred = torch.max(y_hat, 1)
+        event_pred = event_pred.tolist()
+
+        logging.info("Loading the pre-trained threat level ranking model...")
+        # Load the pre-trained L2R model
+        l2r_model = torch.jit.load('Models/'+ args.dataset+'/l2rmodel.pt')
+        l2r_model.eval()
+
+        logging.info("Infering the threat level ranking model with data samples...")
+        y_hat = l2r_model(tensor_data)
+        level_pred = y_hat.detach().numpy()
+        pred_max = np.max(level_pred)
+        pred_min = np.min(level_pred)
+        pred_range = pred_max - pred_min
+        level_pred[(level_pred > (pred_max-(pred_range/4))) & (level_pred <= pred_max)] = 4
+        level_pred[(level_pred > (pred_max-2*(pred_range/4))) & (level_pred < (pred_max-(pred_range/4))) ] = 3
+        level_pred[(level_pred > (pred_max-3*(pred_range/4))) & (level_pred < (pred_max-2*(pred_range/4))) ] = 2
+        level_pred[(level_pred >= pred_min) & (level_pred < (pred_max-3*(pred_range/4))) ] = 1
+        level_pred = level_pred.squeeze()
+        level_pred = level_pred.tolist()
+
+        logging.info("Loading the pre-trained clustering model...")
+        # Load the pre-trained clustering model
+        with open('Models/'+ args.dataset+'/'+args.clustering_algo+'.pkl', 'rb') as f:
+            cluster_model = pickle.load(f)
+
+        logging.info("Infering the clustering model with data samples...")
+        cluster_predicts = cluster_model.fit_predict(data)
+
+
+
+        logging.info("Connecting to MISP...")
+        urllib3.disable_warnings()
+        misp = ExpandedPyMISP(misp_url, misp_key, misp_verifycert)
+
+
+        for i in range(5):
+            r = misp.search(eventinfo=generated_samples.iloc[i].loc[68], metadata=True)
+            cluster_id_str = "Cluster_ID:"+str(cluster_predicts[i])
+            event_class = event_pred[i]
+            event_class_str = "Event_class:"+str(event_classes[event_class])
+            threat_level = int(level_pred[i])
+            if len(r) == 0:
+                event_obj = MISPEvent()
+                event_obj.distribution = 1
+                event_obj.threat_level_id = threat_level
+                event_obj.analysis = 1
+                event_obj.info = generated_samples.iloc[i].loc[68]
+                event = misp.add_event(event_obj)
+                event_id, event_uuid = event['Event']['id'], event['Event']['uuid']
+                logging.info("Adding a new event with id:" + str(event_id) + " and UUID:"+str(event_uuid))
+                misp_attribute = MISPAttribute()
+                misp_attribute.value = str(original_samples.iloc[i]['Atr_Value'])
+                misp_attribute.category = str(original_samples.iloc[i]['Category'])
+                misp_attribute.type = str(original_samples.iloc[i]['Atr_type'])
+                misp_attribute.comment = str(original_samples.iloc[i]['Comment'])
+                misp_attribute.to_ids = str(original_samples.iloc[i]['Is_IDS'])
+                r = misp.add_attribute(event_uuid, misp_attribute)
+                tag = misp.tag(event_uuid, cluster_id_str)
+                tag = misp.tag(event_uuid, event_class_str)
+                logging.info("Adding a cluster tag:" + cluster_id_str)
+                logging.info("Adding an event tag:" + event_class_str)
+
+
+            else:
+                for obj in r:
+                    misp_attribute = MISPAttribute()
+                    misp_attribute.value = str(original_samples.iloc[i]['Atr_Value'])
+                    misp_attribute.category = str(original_samples.iloc[i]['Category'])
+                    misp_attribute.type = str(original_samples.iloc[i]['Atr_type'])
+                    misp_attribute.comment = str(original_samples.iloc[i]['Comment'])
+                    misp_attribute.to_ids = str(original_samples.iloc[i]['Is_IDS'])
+                    r = misp.add_attribute(str(obj['Event']['uuid']), misp_attribute)
+                    tags = []
+                    for tag in obj['Event']['Tag']:
+                        tags.append(tag['name'])
+
+                    if cluster_id_str not in tags:
+                        tag = misp.tag(event_uuid, cluster_id_str)
+                        logging.info("Adding a new tag:" + cluster_id_str + " to the event:"+str(event_uuid))
+
+                    logging.info("Add a new attribute to the event:" + str(event_id))
+
+
+
     def __init__(self, host, port, dataset, epochs, batch_size, model, opt, loss):
         """
         TODO: Description
@@ -183,10 +315,14 @@ class ClientHandler:
         self.external_xsyn = []
         self.external_ysyn = []
         # Initiate federated client thread
-        self.client_program = threading.Thread(target=self.client_program, args=([host, port, dataset, epochs, batch_size, model, opt, loss]))
+        self.client_program = threading.Thread(target=self.client_fl_program, args=([host, port, dataset, epochs, batch_size, model, opt, loss]))
         self.client_program.start()
 
 if __name__=='__main__':
+
+    coloredlogs.install(fmt='%(asctime)s,%(msecs)03d %(name)s[%(process)d] %(levelname)s %(message)s')
+    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+    logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
     """ Define initial model """
     model = Models.Multi_Classifier_Reg(66, 168, 85, 45, 10)
