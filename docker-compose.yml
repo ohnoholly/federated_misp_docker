@@ -56,7 +56,8 @@ services:
       - db
     ports:
       - "80:80"
-      - "443:8080"
+      - "443:443"
+      - "6666:6666"
     volumes:
       - "./configs/:/var/www/MISP/app/Config/"
       - "./logs/:/var/www/MISP/app/tmp/logs/"
@@ -142,6 +143,8 @@ services:
     build:
       context: federated_event_module/.
       dockerfile: Dockerfile
+    depends_on:
+      - misp-core
     networks:
       - inner_network
 

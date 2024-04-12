@@ -11,7 +11,7 @@ logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
 time.sleep(60)
 
-misp_url = 'https://localhost:8080'
+misp_url = 'https://localhost:6666'
 misp_key = "5cb1b97269eeb2b5143a45ff3df41cf49306ffd5"
 misp_verifycert = False
 
