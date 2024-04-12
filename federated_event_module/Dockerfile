@@ -21,8 +21,7 @@ RUN python3 -m pip install \
     coloredlogs\
     nltk\
     urllib3\
-    pymisp==2.4.167\
-    pytorch-lightning
+    pymisp==2.4.167
 
 ## install sudo and gosu
 RUN apt-get update \

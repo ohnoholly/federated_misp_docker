@@ -153,4 +153,3 @@ volumes:
 
 networks:
   inner_network:
-    driver: bridge
