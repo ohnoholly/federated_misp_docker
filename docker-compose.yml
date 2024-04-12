@@ -10,9 +10,13 @@ services:
       - "SMARTHOST_USER=${SMARTHOST_USER}"
       - "SMARTHOST_PASSWORD=${SMARTHOST_PASSWORD}"
       - "SMARTHOST_ALIASES=${SMARTHOST_ALIASES}"
+    networks:
+      - inner_network
 
   redis:
     image: redis:7.2
+    networks:
+      - inner_network
 
   db:
     # We use MariaDB because it supports ARM and has the expected collations
