@@ -21,7 +21,7 @@ RUN python3 -m pip install \
     coloredlogs\
     nltk\
     urllib3\
-    pymisp\
+    pymisp=2.4.167\
     pytorch-lightning
 
 ## install sudo and gosu

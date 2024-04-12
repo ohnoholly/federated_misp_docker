@@ -21,6 +21,9 @@ import pickle
 import urllib3
 import pause
 
+coloredlogs.install(fmt='%(asctime)s,%(msecs)03d %(name)s[%(process)d] %(levelname)s %(message)s')
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
 
 FORMAT = "utf-8"
