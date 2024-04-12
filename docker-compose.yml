@@ -143,8 +143,6 @@ services:
     build:
       context: federated_event_module/.
       dockerfile: Dockerfile
-    depends_on:
-      - misp-core
     networks:
       - inner_network
 
