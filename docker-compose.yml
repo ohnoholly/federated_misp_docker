@@ -27,6 +27,8 @@ services:
       - mysql_data:/var/lib/mysql
     cap_add:
       - SYS_NICE  # CAP_SYS_NICE Prevent runaway mysql log
+    networks:
+      - inner_network
 
   misp-core:
     image: ghcr.io/misp/misp-docker/misp-core:latest
@@ -130,6 +132,8 @@ services:
       - "REDIS_BACKEND=redis"
     depends_on:
       - redis
+    networks:
+      - inner_network
 
   federated-cti:
     build:
