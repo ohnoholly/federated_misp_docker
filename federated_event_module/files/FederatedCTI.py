@@ -333,6 +333,10 @@ class ClientHandler:
 
                         time.sleep(5)
 
+
+                logging.info("All IoCs are uploaded to MISP. Inference phase is over.")
+                self.inference_flag = False
+
             except Exception as e:
                 logging.error(e)
                 logging.error("Connecting to MISP failed, Reconnecting in 30 minutes.")
@@ -350,6 +354,7 @@ class ClientHandler:
         self.external_xsyn = []
         self.external_ysyn = []
         self.inference_flag = False
+        self.inference_listener = True
         # Initiate federated client thread
         self.client_fl_program = threading.Thread(target=self.client_fl_program, args=([host, port, dataset_train, epochs, batch_size, model, opt, loss]))
         self.client_inference_program = threading.Thread(target=self.client_inference_program, args=([dataset_inference, clustering_algo]))
