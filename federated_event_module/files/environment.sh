@@ -17,7 +17,7 @@ export ORG_ID='IPN'
 
 
 # Inference parameters
-export MISP_URL='https://localhost'
+export MISP_URL='https://172.18.0.7'
 export MISP_AUTH_KEY='5cb1b97269eeb2b5143a45ff3df41cf49306ffd5'
 export DATASET_INFERENCE='botvrij'
 export CLUSTERING_ALGO='HC'
