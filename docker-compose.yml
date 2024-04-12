@@ -50,6 +50,7 @@ services:
       - db
     ports:
       - "80:80"
+      - "8080:8080"
       - "443:443"
     volumes:
       - "./configs/:/var/www/MISP/app/Config/"
@@ -114,6 +115,8 @@ services:
       - "MYSQL_USER=${MYSQL_USER:-misp}"
       - "MYSQL_PASSWORD=${MYSQL_PASSWORD:-example}"
       - "MYSQL_DATABASE=${MYSQL_DATABASE:-misp}"
+    networks:
+      - inner_network
 
   misp-modules:
     image: ghcr.io/misp/misp-docker/misp-modules:latest
@@ -132,6 +135,12 @@ services:
     build:
       context: federated_event_module/.
       dockerfile: Dockerfile
+    networks:
+      - inner_network
 
 volumes:
     mysql_data:
+
+networks:
+  inner_network:
+    driver: bridge
