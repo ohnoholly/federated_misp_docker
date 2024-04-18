@@ -16,7 +16,8 @@ services:
   redis:
     image: redis:7.2
     networks:
-      - inner_network
+      - inner_network:
+          ipv4_address: 172.16.0.9
 
   db:
     # We use MariaDB because it supports ARM and has the expected collations
@@ -32,7 +33,8 @@ services:
     cap_add:
       - SYS_NICE  # CAP_SYS_NICE Prevent runaway mysql log
     networks:
-      - inner_network
+      - inner_network:
+          ipv4_address: 172.16.0.5
 
   misp-core:
     image: ghcr.io/misp/misp-docker/misp-core:latest
@@ -122,7 +124,8 @@ services:
       - "MYSQL_PASSWORD=${MYSQL_PASSWORD:-example}"
       - "MYSQL_DATABASE=${MYSQL_DATABASE:-misp}"
     networks:
-      - inner_network
+      - inner_network:
+          ipv4_address: 172.16.0.6
 
   misp-modules:
     image: ghcr.io/misp/misp-docker/misp-modules:latest
@@ -137,17 +140,23 @@ services:
     depends_on:
       - redis
     networks:
-      - inner_network
+        - inner_network:
+            ipv4_address: 172.16.0.7
 
   federated-cti:
     build:
       context: federated_event_module/.
       dockerfile: Dockerfile
     networks:
-      - inner_network
+      - inner_network:
+          ipv4_address: 172.16.0.8
 
 volumes:
     mysql_data:
 
 networks:
   inner_network:
+    ipam:
+      driver: default
+      config:
+        - subnet: "172.16.0.0/16"
