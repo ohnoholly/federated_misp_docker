@@ -325,8 +325,8 @@ class ClientHandler:
                                     tags.append(tag['name'])
 
                                 if cluster_id_str not in tags:
-                                    tag = misp.tag(event_uuid, cluster_id_str)
-                                    logging.info("Adding a new tag:" + cluster_id_str + " to the event:"+str(event_uuid))
+                                    tag = misp.tag(str(obj['Event']['uuid']), cluster_id_str)
+                                    logging.info("Adding a new tag:" + cluster_id_str + " to the event:"+str(obj['Event']['uuid']))
 
                                 logging.info("Add a new attribute to the event:" + str(event_id))
                             bookmark = instance
