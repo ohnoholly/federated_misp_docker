@@ -11,12 +11,13 @@ services:
       - "SMARTHOST_PASSWORD=${SMARTHOST_PASSWORD}"
       - "SMARTHOST_ALIASES=${SMARTHOST_ALIASES}"
     networks:
-      - inner_network
+      inner_network:
+         ipv4_address: 172.16.0.10
 
   redis:
     image: redis:7.2
     networks:
-      - inner_network:
+       inner_network:
           ipv4_address: 172.16.0.9
 
   db:
@@ -33,7 +34,7 @@ services:
     cap_add:
       - SYS_NICE  # CAP_SYS_NICE Prevent runaway mysql log
     networks:
-      - inner_network:
+       inner_network:
           ipv4_address: 172.16.0.5
 
   misp-core:
@@ -124,7 +125,7 @@ services:
       - "MYSQL_PASSWORD=${MYSQL_PASSWORD:-example}"
       - "MYSQL_DATABASE=${MYSQL_DATABASE:-misp}"
     networks:
-      - inner_network:
+       inner_network:
           ipv4_address: 172.16.0.6
 
   misp-modules:
@@ -140,7 +141,7 @@ services:
     depends_on:
       - redis
     networks:
-        - inner_network:
+         inner_network:
             ipv4_address: 172.16.0.7
 
   federated-cti:
@@ -148,7 +149,7 @@ services:
       context: federated_event_module/.
       dockerfile: Dockerfile
     networks:
-      - inner_network:
+       inner_network:
           ipv4_address: 172.16.0.8
 
 volumes:
