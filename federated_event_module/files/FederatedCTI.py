@@ -328,7 +328,7 @@ class ClientHandler:
                                     tag = misp.tag(str(obj['Event']['uuid']), cluster_id_str)
                                     logging.info("Adding a new tag:" + cluster_id_str + " to the event:"+str(obj['Event']['uuid']))
 
-                                logging.info("Add a new attribute to the event:" + str(event_id))
+                                logging.info("Add a new attribute to the event:" + str(obj['Event']['id']))
                             bookmark = instance
 
                         time.sleep(5)
