@@ -16,12 +16,12 @@ RUN python3 -m pip install \
     openpyxl\
     pause \
     pika \
-    scikit_learn\
+    scikit_learn==1.0.2 --break-system-packages \
     torch \
     coloredlogs\
     nltk\
     urllib3\
-    pymisp==2.4.167
+    pymisp==2.4.167 --break-system-packages
 
 ## install sudo and gosu
 RUN apt-get update \
