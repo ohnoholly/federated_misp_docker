@@ -10,14 +10,13 @@ RUN apt-get -y install python3 python3-venv python3-pip python3-sphinx dotenv st
 RUN apt-get -y install libpq-dev libxml2-dev libxslt1-dev libldap2-dev libsasl2-dev libffi-dev libjpeg-dev zlib1g-dev git
 
 # Install dependencies (install this here instead of in the requirements.txt file to avoid having to install them every time the image is built)
-RUN rm /usr/lib/python*/EXTERNALLY-MANAGED && \
-    python3 -m pip install --no-cache-dir --upgrade pip \
+RUN python3 -m pip install --no-cache-dir --upgrade pip \
     numpy \
     pandas \
     openpyxl\
     pause \
     pika \
-    scikit_learn==1.0.2 \
+    scikit_learn \
     torch \
     coloredlogs\
     nltk\
