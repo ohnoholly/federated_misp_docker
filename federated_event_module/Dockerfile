@@ -11,7 +11,7 @@ RUN apt-get -y install libpq-dev libxml2-dev libxslt1-dev libldap2-dev libsasl2-
 
 # Install dependencies (install this here instead of in the requirements.txt file to avoid having to install them every time the image is built)
 RUN rm /usr/lib/python*/EXTERNALLY-MANAGED && \
-    python3 -m pip install \
+    python3 -m pip install --no-cache-dir --upgrade pip \
     numpy \
     pandas \
     openpyxl\
