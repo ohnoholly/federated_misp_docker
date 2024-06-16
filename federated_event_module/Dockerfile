@@ -1,5 +1,5 @@
-FROM ubuntu:latest
-ARG DEBIAN_FRONTEND=noninteractive
+FROM python:3.11-slim-bullseye
+
 
 # Any working directory can be chosen as per choice like '/' or '/home' etc
 WORKDIR /home
