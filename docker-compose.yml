@@ -15,7 +15,13 @@ services:
          ipv4_address: 172.16.0.10
 
   redis:
-    image: redis:7.2
+    image: valkey/valkey:7.2
+    healthcheck:
+      test: valkey-cli ping || exit 1
+      interval: 2s
+      timeout: 1s
+      retries: 3
+      start_period: 30s
     networks:
        inner_network:
           ipv4_address: 172.16.0.9
@@ -33,9 +39,16 @@ services:
       - mysql_data:/var/lib/mysql
     cap_add:
       - SYS_NICE  # CAP_SYS_NICE Prevent runaway mysql log
+    healthcheck:
+      test: mysqladmin --user=$$MYSQL_USER --password=$$MYSQL_PASSWORD status
+      interval: 2s
+      timeout: 1s
+      retries: 3
+      start_period: 30s
     networks:
        inner_network:
           ipv4_address: 172.16.0.5
+
 
   misp-core:
     image: ghcr.io/misp/misp-docker/misp-core:latest
@@ -55,8 +68,18 @@ services:
           - PYPI_CYBOX_VERSION=${PYPI_CYBOX_VERSION}
           - PYPI_PYMISP_VERSION=${PYPI_PYMISP_VERSION}
     depends_on:
-      - redis
-      - db
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+    # this is now disabled until we have a heartbeat endpoint with no side effects
+    # healthcheck:
+    #   test: curl -ks https://localhost/users/login > /dev/null || exit 1
+    #   interval: 2s
+    #   timeout: 1s
+    #   retries: 3
+    #   start_period: 30s
+    #   start_interval: 30s
     ports:
       - "80:80"
       - "443:443"
@@ -76,6 +99,7 @@ services:
       - "CRON_USER_ID=${CRON_USER_ID}"
       - "DISABLE_IPV6=${DISABLE_IPV6}"
       - "DISABLE_SSL_REDIRECT=${DISABLE_SSL_REDIRECT}"
+      - "ENABLE_DB_SETTINGS=${ENABLE_DB_SETTINGS}"
       # standard settings
       - "ADMIN_EMAIL=${ADMIN_EMAIL}"
       - "ADMIN_PASSWORD=${ADMIN_PASSWORD}"
@@ -107,6 +131,25 @@ services:
       - "LDAP_OPT_PROTOCOL_VERSION=${LDAP_OPT_PROTOCOL_VERSION}"
       - "LDAP_OPT_NETWORK_TIMEOUT=${LDAP_OPT_NETWORK_TIMEOUT}"
       - "LDAP_OPT_REFERRALS=${LDAP_OPT_REFERRALS}"
+      # AAD authentication settings
+      - "AAD_ENABLE=${AAD_ENABLE}"
+      - "AAD_CLIENT_ID=${AAD_CLIENT_ID}"
+      - "AAD_TENANT_ID=${AAD_TENANT_ID}"
+      - "AAD_CLIENT_SECRET=${AAD_CLIENT_SECRET}"
+      - "AAD_REDIRECT_URI=${AAD_REDIRECT_URI}"
+      - "AAD_PROVIDER=${AAD_PROVIDER}"
+      - "AAD_PROVIDER_USER=${AAD_PROVIDER_USER}"
+      - "AAD_MISP_USER=${AAD_MISP_USER}"
+      - "AAD_MISP_ORGADMIN=${AAD_MISP_ORGADMIN}"
+      - "AAD_MISP_SITEADMIN=${AAD_MISP_SITEADMIN}"
+      - "AAD_CHECK_GROUPS=${AAD_CHECK_GROUPS}"
+      # Proxy settings
+      - "PROXY_ENABLE=${PROXY_ENABLE}"
+      - "PROXY_HOST=${PROXY_HOST}"
+      - "PROXY_PORT=${PROXY_PORT}"
+      - "PROXY_METHOD=${PROXY_METHOD}"
+      - "PROXY_USER=${PROXY_USER}"
+      - "PROXY_PASSWORD=${PROXY_PASSWORD}"
       # sync server settings (see https://www.misp-project.org/openapi/#tag/Servers for more options)
       - "SYNCSERVERS=${SYNCSERVERS}"
       - |
@@ -124,6 +167,8 @@ services:
       - "MYSQL_USER=${MYSQL_USER:-misp}"
       - "MYSQL_PASSWORD=${MYSQL_PASSWORD:-example}"
       - "MYSQL_DATABASE=${MYSQL_DATABASE:-misp}"
+      # Debug setting
+      - "DEBUG=${DEBUG}"
     networks:
        inner_network:
           ipv4_address: 172.16.0.6
@@ -139,7 +184,8 @@ services:
     environment:
       - "REDIS_BACKEND=redis"
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
     networks:
          inner_network:
             ipv4_address: 172.16.0.7
