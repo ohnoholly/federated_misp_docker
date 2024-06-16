@@ -16,12 +16,12 @@ RUN pip3 install --no-cache-dir --upgrade pip --break-system-packages \
     openpyxl\
     pause \
     pika \
-    scikit_learn==1.0.2 \
+    scikit_learn \
     torch \
     coloredlogs\
     nltk\
     urllib3\
-    pymisp==2.4.167
+    pymisp
 
 ## install sudo and gosu
 RUN apt-get update \
