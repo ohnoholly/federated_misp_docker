@@ -10,18 +10,19 @@ RUN apt-get -y install python3 python3-venv python3-pip python3-sphinx dotenv st
 RUN apt-get -y install libpq-dev libxml2-dev libxslt1-dev libldap2-dev libsasl2-dev libffi-dev libjpeg-dev zlib1g-dev git
 
 # Install dependencies (install this here instead of in the requirements.txt file to avoid having to install them every time the image is built)
-RUN python3 -m pip install \
+RUN rm /usr/lib/python*/EXTERNALLY-MANAGED && \
+    python3 -m pip install \
     numpy \
     pandas \
     openpyxl\
     pause \
     pika \
-    scikit_learn==1.0.2 --break-system-packages \
+    scikit_learn==1.0.2 \
     torch \
     coloredlogs\
     nltk\
     urllib3\
-    pymisp==2.4.167 --break-system-packages
+    pymisp==2.4.167
 
 ## install sudo and gosu
 RUN apt-get update \
